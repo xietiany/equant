@@ -1,0 +1,17 @@
+<!doctype html>
+<form method="post">
+    <label for="ticker">Ticker</label>
+    <input name="ticker" id="ticker" required>
+    <input type="submit" value="submit">
+</form>
+{% for item in data %}
+    <article>
+      <header>
+        <div>
+            <h1>{{ item['priceEarningsRatio'] }}</h1>
+            <h1>{{ item['priceSalesRatio'] }}</h1>
+            <h1>{{ item['priceToBookRatio'] }}</h1>
+        </div>
+      </header>
+    </article>
+{% endfor %}
