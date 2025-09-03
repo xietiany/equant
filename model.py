@@ -10,7 +10,8 @@ def getInfo(ticker, period, valuationMethod, valationStage, growthHorizon, valua
         data["valuationMethod"] = object.valuationMethod
         data["valuationStage"] = object.valuationStage
         data["startValue"] = object.starting
-        data["horizon"] = object.growthCalcHorizon
+        data["growthCalcHorizon"] = object.growthCalcHorizon
+        data["valuationHorizon"] = object.valuationHorizon
         data["firstStageGrowth"] = object.firstStageGrowthValue
         data["secondStageGrowth"] = object.secondStageGrowthValue
         data["LTGrowth"] = object.LTGrowth

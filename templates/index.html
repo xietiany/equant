@@ -1,18 +1,18 @@
 <!doctype html>
 <form method="post">
-    <label for="ticker">ticker</label>
+    <label for="ticker">代码</label>
     <input name="ticker" id="ticker" required>
-    <label for="period">period</label>
+    <label for="period">周期</label>
     <input name="period" id="period" required>
-    <label for="valuationMethod">valuationMethod</label>
+    <label for="valuationMethod">估值方法</label>
     <input name="valuationMethod" id="valuationMethod" required>
-    <label for="valuationStage">valuationStage</label>
+    <label for="valuationStage">估值阶段</label>
     <input name="valuationStage" id="valuationStage" required>
-    <label for="growthHorizon">growthHorizon</label>
+    <label for="growthHorizon">成长期限</label>
     <input name="growthHorizon" id="growthHorizon" required>
-    <label for="valuationHorizon">valuationHorizon</label>
+    <label for="valuationHorizon">估值期限</label>
     <input name="valuationHorizon" id="valuationHorizon" required>
-    <label for="date">date</label>
+    <label for="date">估值日期</label>
     <input type="date" name="date" id="date" required>
     <input type="submit" value="submit">
 </form>
@@ -35,18 +35,37 @@
     <article>
       <header>
         <div>
-            <h1>valuation method is {{ valuationMethod }}</h1>
-            <h1>valuation stage is {{ valuationStage }}</h1>
-            <h1>starting value is {{ startValue }}</h1>
-            <h1>horizon is {{ horizon }}</h1>
-            <h1>first stage growth is {{ firstStageGrowth }}</h1>
-            <h1>second stage growth is {{ secondStageGrowth }}</h1>
-            <h1>long term growth is {{ LTGrowth }}</h1>
-            <h1>required rate of return is {{ RR }}</h1>
-            <h1>fair value is {{ FV }}</h1>
+            <h1>估值方法是 {{ valuationMethod }}</h1>
+            <h1>估值阶段是 {{ valuationStage }}</h1>
+            <h1>估值启示数值是 {{ startValue }}</h1>
+            <h1>估值期限是 {{ valuationHorizon }}</h1>
+            <h1>成长期限是 {{ growthHorizon }}</h1>
+            <h1>第一阶段成长速度{{ firstStageGrowth }}</h1>
+            <h1>第二阶段成长速度{{ secondStageGrowth }}</h1>
+            <h1>长期成长速度{{ LTGrowth }}</h1>
+            <h1>要求折现率{{ RR }}</h1>
+            <h1>公允价值{{ FV }}</h1>
         </div>
       </header>
     </article>
   {% endif %}
 {% else %}
 {% endif %}
+
+<form method="post">
+  <label for="ticker">代码</label>
+  <input name="ticker" id="ticker" required>
+  <label for="period">周期</label>
+  <input name="period" id="period" required>
+  <label for="valuationMethod">估值方法</label>
+  <input name="valuationMethod" id="valuationMethod" required>
+  <label for="valuationStage">估值阶段</label>
+  <input name="valuationStage" id="valuationStage" required>
+  <label for="growthHorizon">成长期限</label>
+  <input name="growthHorizon" id="growthHorizon" required>
+  <label for="valuationHorizon">估值期限</label>
+  <input name="valuationHorizon" id="valuationHorizon" required>
+  <label for="date">估值日期</label>
+  <input type="date" name="date" id="date" required>
+  <input type="submit" value="submit">
+</form>
