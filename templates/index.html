@@ -1,0 +1,52 @@
+<!doctype html>
+<form method="post">
+    <label for="ticker">ticker</label>
+    <input name="ticker" id="ticker" required>
+    <label for="period">period</label>
+    <input name="period" id="period" required>
+    <label for="valuationMethod">valuationMethod</label>
+    <input name="valuationMethod" id="valuationMethod" required>
+    <label for="valuationStage">valuationStage</label>
+    <input name="valuationStage" id="valuationStage" required>
+    <label for="growthHorizon">growthHorizon</label>
+    <input name="growthHorizon" id="growthHorizon" required>
+    <label for="valuationHorizon">valuationHorizon</label>
+    <input name="valuationHorizon" id="valuationHorizon" required>
+    <label for="date">date</label>
+    <input type="date" name="date" id="date" required>
+    <input type="submit" value="submit">
+</form>
+<!-- {% for item in data %}
+    <article>
+      <header>
+        <div>
+            <h1>{{ item['priceEarningsRatio'] }}</h1>
+            <h1>{{ item['priceSalesRatio'] }}</h1>
+            <h1>{{ item['priceToBookRatio'] }}</h1>
+        </div>
+      </header>
+    </article>
+{% endfor %} -->
+{% if FV is defined %}
+  {% if error %}
+      <h1>Please see follow error: {{error}}</h1>
+
+  {% else %}
+    <article>
+      <header>
+        <div>
+            <h1>valuation method is {{ valuationMethod }}</h1>
+            <h1>valuation stage is {{ valuationStage }}</h1>
+            <h1>starting value is {{ startValue }}</h1>
+            <h1>horizon is {{ horizon }}</h1>
+            <h1>first stage growth is {{ firstStageGrowth }}</h1>
+            <h1>second stage growth is {{ secondStageGrowth }}</h1>
+            <h1>long term growth is {{ LTGrowth }}</h1>
+            <h1>required rate of return is {{ RR }}</h1>
+            <h1>fair value is {{ FV }}</h1>
+        </div>
+      </header>
+    </article>
+  {% endif %}
+{% else %}
+{% endif %}
