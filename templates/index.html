@@ -14,7 +14,7 @@
     <input name="valuationHorizon" id="valuationHorizon" required>
     <label for="date">估值日期</label>
     <input type="date" name="date" id="date" required>
-    <input type="submit" value="submit">
+    <input type="submit" value="估值" name="valuation">
 </form>
 <!-- {% for item in data %}
     <article>
@@ -65,7 +65,32 @@
   <input name="growthHorizon" id="growthHorizon" required>
   <label for="valuationHorizon">估值期限</label>
   <input name="valuationHorizon" id="valuationHorizon" required>
-  <label for="date">估值日期</label>
-  <input type="date" name="date" id="date" required>
-  <input type="submit" value="submit">
+  <label for="startdate">起始日期</label>
+  <input type="date" name="startdate" id="startdate" required>
+  <label for="enddate">终止日期</label>
+  <input type="date" name="enddate" id="enddate" required>
+  <input type="submit" value="回测" name="backtest">
 </form>
+
+{% if plot_url %}
+    <img src= {{plot_url}} alt = "Chart cannot be displayed">
+{% endif %}
+
+{% if backtestDF is defined %}
+  {% if error %}
+      <h1>Please see follow error: {{error}}</h1>
+
+  {% else %}
+    <article>
+      <header>
+        <div>
+            <h1>回测结果如下</h1>
+            {{ backtestDF|safe }}
+        </div>
+      </header>
+    </article>
+  {% endif %}
+{% else %}
+{% endif %}
+
+
