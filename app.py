@@ -2,6 +2,7 @@ from flask import Flask, request, render_template
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
 from model import getInfo, getBacktestInfo
 
 app = Flask(__name__)
@@ -31,19 +32,24 @@ def stockBoard():
             enddate = request.form['enddate']
             data = getBacktestInfo(ticker, period, valuationMethod, valuationStage, growthHorizon, valuationHorizon, startdate, enddate)
 
-            fig, ax = plt.subplots(figsize=(12, 5))
-            ax.plot(data["xaxis"], data["res"], label=["fair value", "top 10 mean", "mean"], marker='o', linestyle='-')
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Price")
-            ax.set_title("Backtesting Results")
-            ax.legend()
-            ax.grid(True, alpha=0.3)
-            plt.xticks(rotation=45, ha='right')
-            plt.tight_layout()
-            fig.savefig('static/backtest.png', dpi=150, bbox_inches='tight')
-            plt.close(fig)
+            plot_url = None
+            if "xaxis" in data:
+                fig, ax = plt.subplots(figsize=(12, 5))
+                labels = ["fair value", "top 10 mean", "mean"]
+                for col, label in zip(np.array(data["res"]).T, labels):
+                    ax.plot(data["xaxis"], col, label=label, marker='o', linestyle='-')
+                ax.set_xlabel("Date")
+                ax.set_ylabel("Price")
+                ax.set_title("Backtesting Results")
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+                plt.xticks(rotation=45, ha='right')
+                plt.tight_layout()
+                fig.savefig('static/backtest.png', dpi=150, bbox_inches='tight')
+                plt.close(fig)
+                plot_url = 'static/backtest.png'
 
-            return render_template("index.html", formType='backtest', plot_url='static/backtest.png', **data)
+            return render_template("index.html", formType='backtest', plot_url=plot_url, **data)
 
     return render_template("index.html")
 
