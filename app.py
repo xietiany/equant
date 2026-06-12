@@ -1,13 +1,9 @@
-from flask import Flask
-from flask import request
-from flask import render_template
-import sys
+from flask import Flask, request, render_template
 import matplotlib
-matplotlib.use('Agg')  # Use a non-interactive backend
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-sys.path.append("/Users/tianyixie/Documents/equant") 
 from model import getInfo, getBacktestInfo
-import requests
+
 app = Flask(__name__)
 
 @app.route("/", methods=['GET', 'POST'])
@@ -18,42 +14,37 @@ def stockBoard():
             period = request.form['period']
             valuationMethod = request.form['valuationMethod']
             valuationStage = request.form['valuationStage']
-            growthHorizon = request.form['growthHorizon']
-            valuationHorizon = request.form['valuationHorizon']
+            growthHorizon = int(request.form['growthHorizon'])
+            valuationHorizon = int(request.form['valuationHorizon'])
             date = request.form['date']
-            # url = f"https://financialmodelingprep.com/api/v3/ratios/{ticker}?period=quarter&apikey=5MGyRLKiJleTCG8AOx26iYV6z8B9enmP"
-            # response = requests.get(url)
-            # data = response.json()
+            data = getInfo(ticker, period, valuationMethod, valuationStage, growthHorizon, valuationHorizon, date)
+            return render_template("index.html", formType='valuation', **data)
 
-            data = getInfo(ticker, period, valuationMethod, valuationStage, int(growthHorizon), int(valuationHorizon), date) # design the valution function
         elif 'backtest' in request.form:
             ticker = request.form['ticker']
             period = request.form['period']
             valuationMethod = request.form['valuationMethod']
             valuationStage = request.form['valuationStage']
-            growthHorizon = request.form['growthHorizon']
-            valuationHorizon = request.form['valuationHorizon']
+            growthHorizon = int(request.form['growthHorizon'])
+            valuationHorizon = int(request.form['valuationHorizon'])
             startdate = request.form['startdate']
             enddate = request.form['enddate']
+            data = getBacktestInfo(ticker, period, valuationMethod, valuationStage, growthHorizon, valuationHorizon, startdate, enddate)
 
-            data = getBacktestInfo(ticker, period, valuationMethod, valuationStage, int(growthHorizon), int(valuationHorizon), startdate, enddate)
-            # label = ["fair value", "top 10 mean", "mean"]
-            # for i in range(len(label)):
-            #     val = [float(x[i]) for x in data["res"]]
-            #     x = data["xaxis"]
-            #     plt.plot(x, val) # For a line plot with markers
-            plt.plot(data["xaxis"], data["res"], label = ["fair value", "top 10 mean", "mean"], marker='o', linestyle='-') # For a line plot with markers
-        
-            plt.xticks(rotation=90)
-            plt.xlabel("X-axis")
-            plt.ylabel("Y-axis")
-            plt.title("Plot of Backtesting")
-            plt.legend()
-            plt.grid(True)
-            
-            plt.savefig('static/backtest.png') # design the valution function
+            fig, ax = plt.subplots(figsize=(12, 5))
+            ax.plot(data["xaxis"], data["res"], label=["fair value", "top 10 mean", "mean"], marker='o', linestyle='-')
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Price")
+            ax.set_title("Backtesting Results")
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            fig.savefig('static/backtest.png', dpi=150, bbox_inches='tight')
+            plt.close(fig)
 
-        return render_template("index.html", plot_url = 'static/backtest.png', **data)
+            return render_template("index.html", formType='backtest', plot_url='static/backtest.png', **data)
+
     return render_template("index.html")
 
 if __name__ == "__main__":

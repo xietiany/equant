@@ -7,47 +7,55 @@ from lib.obj.dividend import dividend
 from lib.obj.econ import econ
 from lib.obj.price import price
 from lib.engine.engine import engine
+from lib.util.config import config as Config
+from datetime import date
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 class stock(engine):
-    
-    def __init__(self, ticker, period = "annual"):
+
+    def __init__(self, ticker, period="annual", cfg=None):
+        if cfg is None:
+            cfg = Config()
+
         self._ticker = ticker
         self._period = period
         self._ratiotype = "key-metrics"
-        self._balancest = balancest(self._ticker, self._period) # period could be annual|quarter|report
-        self._incomest = incomest(self._ticker, self._period) # period could be annual|quarter|report
-        self._cashflowst = cashflowst(self._ticker, self._period) # period could be annual|quarter|report
+        self._balancest = balancest(self._ticker, self._period)
+        self._incomest = incomest(self._ticker, self._period)
+        self._cashflowst = cashflowst(self._ticker, self._period)
         self._price = price(self._ticker)
-        # self._valuation = valuation(self._ticker)
-        # self._ratio = ratio(self._ticker, self._period, self._ratiotype)
         self._div = dividend(self._ticker)
 
-        
-        # stock characteristics setup
-        self._WACCApproach = True
-        self._longtermGrowthDefault = True
+        # stock characteristics — loaded from config
+        self._WACCApproach           = cfg.waccApproach
+        self._longtermGrowthDefault  = cfg.longTermGrowthDefault
+        self._valuationStage         = cfg.valuationStage
+        self._valuationMethod        = cfg.valuationMethod
+        self._growthCalcMethod       = cfg.growthCalcMethod
+        self._growthCalcHorizon      = cfg.growthCalcHorizon
+        self._valuationHorizon       = cfg.valuationHorizon
 
-        self._firstStageGrowth = None 
+        self._firstStageGrowth = None
         self._secondStageGrowth = None
         self._LTGrowth = None
 
-        self._valuationStage = "single" # two, three
-        self._valuationMethod = "fcfe" # either fcfe or earning
-        self._starting = float(self.incomest.eps.iloc[0]) # earning, NI
-        self._growthCalcMethod = "earning" # fcfe, NI
-        self._growthCalcHorizon = 5
-        self._valuationHorizon = 5
-        
-        # Econ Variables
-        self._macro = econ(taxRate = 25, rf = 1.64)
-        self._taxRate = self._macro.taxRate()
-        self._lowestMarketReturn = self._macro.getLowestMarketReturn()
-        self._rf = self._macro.riskFreeRate()
-        self._marketIndex = self._macro.index()
-        self._marketReturn = self._marketReturnCalc()
+        self._starting = float(self.incomest.eps.iloc[0])
+
+        # Econ Variables — loaded from config
+        self._macro = econ(
+            taxRate            = cfg.taxRate,
+            rf                 = cfg.riskFreeRate,
+            marketReturnMethod = cfg.marketReturnMethod,
+            n_years            = cfg.nYears,
+            fixed_erp          = cfg.fixedErp,
+        )
+        self._taxRate             = self._macro.taxRate()
+        self._lowestMarketReturn  = self._macro.getLowestMarketReturn()
+        self._rf                  = self._macro.riskFreeRate()
+        self._marketIndex         = self._macro.index()
+        self._marketReturn        = self._macro.marketReturn()
 
         self._updateCurrentMarketPrice()
         self._betaCalc()
@@ -170,7 +178,7 @@ class stock(engine):
     def MVEquity(self, input_date=None):
         if not input_date:
             input_date = self.get_default_last_day_of_previous_year()
-        self._MVEquity = (self._incomest.shares * self._price.latestQuarterMarketPrice)[input_date]
+        self._MVEquity = (self._incomest.shares * self._price.latestQuarterMarketPrice).iloc[0] # to-do, use the latest market price
         return self._MVEquity
     
     def MVDebt(self, input_date=None):
@@ -178,7 +186,7 @@ class stock(engine):
             input_date = self.get_default_last_day_of_previous_year()
         self._MVDebt = (self._balancest.stDebt.fillna(0) + self._balancest.notePayable.fillna(0) + \
         self._balancest.ltDebt.fillna(0) + self._balancest.bondPayable.fillna(0) + \
-        self._balancest.capitalLease.fillna(0))[input_date]
+        self._balancest.capitalLease.fillna(0)).iloc[0] # to-do, use the latest balance sheet
         return self._MVDebt
 
     def EV(self):
@@ -206,7 +214,10 @@ class stock(engine):
     def costDebt(self, input_date=None):
         if not input_date:
             input_date = self.get_default_last_day_of_previous_year()
-        self._costDebt = (self._incomest.intExp.fillna(0) / self._MVDebt * 100)[input_date]
+        if self._MVDebt == 0:
+            self._costDebt = 0.0
+        else:
+            self._costDebt = (self._incomest.intExp.fillna(0) / self._MVDebt * 100).iloc[0] # to-do, use the latest income statement
 
     def PS(self):
         pass
@@ -285,13 +296,17 @@ class stock(engine):
             raise ValueError("rate should be greater than 0")
         self._RR = rate
     
-    def _betaCalc(self, start = "2024-01-01", end = "2024-12-31"):
+    def _betaCalc(self, start=None, end=None):
+        if start is None:
+            prev_year = date.today().year - 1
+            start = date(prev_year, 1, 1)
+        if end is None:
+            prev_year = date.today().year - 1
+            end = date(prev_year, 12, 31)
         if isinstance(start, str):
-            format_string = "%Y-%m-%d"
-            start = pd.to_datetime(start, format=format_string).date()
+            start = pd.to_datetime(start, format="%Y-%m-%d").date()
         if isinstance(end, str):
-            format_string = "%Y-%m-%d"
-            end = pd.to_datetime(end, format=format_string).date()
+            end = pd.to_datetime(end, format="%Y-%m-%d").date()
         
         stockHist = self._price.raw
         self._marketIndex["date"] = pd.to_datetime(self._marketIndex.date)
@@ -312,26 +327,34 @@ class stock(engine):
         market_returns = market_data.pct_change().dropna().to_list()
         
         covariance = np.cov(stock_returns, market_returns)[0,1]
-        market_variance = np.var(market_returns)
+        market_variance = np.var(market_returns, ddof=1)
 
         self._beta = covariance / market_variance
 
-    def _marketReturnCalc(self, start = "2024-01-01", end = "2024-12-31"):
-        if isinstance(start, str):
-            format_string = "%Y-%m-%d"
-            start = pd.to_datetime(start, format=format_string).date()
-        if isinstance(end, str):
-            format_string = "%Y-%m-%d"
-            end = pd.to_datetime(end, format=format_string).date()
-        self._marketIndex["date"] = pd.to_datetime(self._marketIndex.date)
-        selected = self._marketIndex[(self._marketIndex["date"].dt.date >= start) & (self._marketIndex["date"].dt.date <= end)]
-        self._marketReturn = (selected.iloc[-1]['close'] / selected.iloc[0]['close'] - 1) * 100
-        return self._marketReturn
+    def setMarketReturnMethod(self, method, **kwargs):
+        """
+        Switch expected market return method. Propagates to econ and refreshes
+        cost of equity so downstream WACC/CAPM stay consistent.
 
-    def _updateCurrentMarketPrice(self, start = "2024-01-01", end = "2024-12-31"):
+        method options (see econ.MARKET_RETURN_METHODS):
+          "historical"  — mean of annual returns over n_years (default 10)
+          "implied_erp" — SSE earnings yield + 5% nominal growth
+          "fixed_erp"   — rf + fixed_erp (default 7.5%)
+
+        Extra kwargs (n_years, fixed_erp) are forwarded to econ.setMarketReturnMethod.
+        """
+        self._marketReturn = self._macro.setMarketReturnMethod(method, **kwargs)
+        self.costEquity()
+
+    def _updateCurrentMarketPrice(self, start=None, end=None):
+        if start is None:
+            prev_year = date.today().year - 1
+            start = date(prev_year, 1, 1)
+        if end is None:
+            prev_year = date.today().year - 1
+            end = date(prev_year, 12, 31)
         if isinstance(start, str):
-            format_string = "%Y-%m-%d"
-            start = pd.to_datetime(start, format=format_string).date()
+            start = pd.to_datetime(start, format="%Y-%m-%d").date()
         if isinstance(end, str):
             format_string = "%Y-%m-%d"
             end = pd.to_datetime(end, format=format_string).date()
@@ -369,7 +392,7 @@ class stock(engine):
 
     def secondstateGrowthEngine(self):
         ### use if else condition to get the secondstategrowth
-        if not self._firstStageGrowth:
+        if self._firstStageGrowth is None:
             raise ValueError("Not initialzie the first stage growth rate")
         if self._firstStageGrowth <= 5:
             self._secondStageGrowth = self._firstStageGrowth
@@ -392,7 +415,7 @@ class stock(engine):
 
     def LTGrowthEngine(self):
         # to-do: We should have a table config for this parameter
-        if not self._secondStageGrowth:
+        if self._secondStageGrowth is None:
             raise ValueError("Not initialize the second stage growth rate")
         if self._secondStageGrowth <= 5:
             self._LTGrowth = self._secondStageGrowth
@@ -446,7 +469,7 @@ class stock(engine):
         return self._valuationMethod
     
     @valuationMethod.setter
-    def valuationMehod(self, option="fcfe"):
+    def valuationMethod(self, option="fcfe"):
         '''
         Option could be "fcfe, earning, ri"
         '''
@@ -498,7 +521,7 @@ class stock(engine):
 
 
     @property
-    def FV(self, date=None):
+    def FV(self):
         """
         Notice the parameter in the earning function is the callback attribute
         Therefore it will prin the input information
@@ -576,10 +599,21 @@ class stock(engine):
                     temp.append(self.price.Mean(self._period).to_dict()[year])
                 self._xaxis.append(current)
                 self._res.append(temp)
-            except ValueError:
-                print(ValueError)
+            except (ValueError, ZeroDivisionError, KeyError, IndexError) as e:
+                print(f"----------------------Warning: Skipping {current}------------------------: {e}")
 
         self._backtestingDF = pd.DataFrame(data=self._res, index=self._xaxis, columns=["fair value", "top 10 mean", "mean"])
+
+        plt.plot(self._xaxis, self._res, label = ["fair value", "top 10 mean", "mean"],marker='o', linestyle='-') # For a line plot with markers
+        
+        plt.xticks(rotation=90)
+        plt.xlabel("X-axis")
+        plt.ylabel("Y-axis")
+        plt.title("Plot of Backtesting")
+        plt.legend()
+        plt.grid(True)
+        
+        plt.show()
 
     def initialize(self, defaultRateApproach = True, valuationMethod = "fcfe", defaultLTGrowth = False, \
                         valuationStage = "single", growthCalcMethod = "earning", growthCalcHorizon = 5, valuationHorizon = 5, date=None):
@@ -594,7 +628,7 @@ class stock(engine):
         # self._lastdaylastyear = self.get_last_day_of_previous_year(date)
 
         self._updateCurrentMarketPrice(self._startdate, self._enddate) # resset the latest market price
-        self._marketReturnCalc(self._startdate, self._enddate) # reset the market return
+        self._marketReturn = self._macro.marketReturn() # reset the market return
         self._betaCalc(self._startdate, self._enddate)
         self.MVEquity(self._formalDate)
         self.MVDebt(self._formalDate)
@@ -605,7 +639,7 @@ class stock(engine):
         self.costDebt(self._formalDate)
         
         self.RR = defaultRateApproach
-        self.valuationMehod = valuationMethod
+        self.valuationMethod = valuationMethod
         self._longtermGrowthDefault = defaultLTGrowth
         self._valuationStage = valuationStage
         self._growthCalcMethod = growthCalcMethod
